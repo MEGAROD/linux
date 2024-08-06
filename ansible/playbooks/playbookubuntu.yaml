@@ -1,43 +1,36 @@
 ---
-
 - name: Configurar y asegurar MariaDB en Ubuntu
-
   hosts: ubuntu
-
   become: yes
-
   vars:
-
     db_user: "user"
-
     db_password: "Servidor1"
-
     db_name: "ToDo"
+    db_root_password: "Servidor1"
 
-    mysql_root_password: "Servidor1"
+   tasks:
+  
+     - name: Configurar el intérprete de Python
+       set_fact:
+       ansible_python_interpreter: /usr/bin/python3.12
 
-
-  tasks:
-
-    - name: Configurar el intérprete de Python
-
-      set_fact:
-
-        ansible_python_interpreter: /usr/bin/python3.12
-
-
-    - name: Actualizar la lista de paquetes
-
-      apt:
-
-        update_cache: yes
-
+     - name: Actualizar la lista de paquetes
+       apt:
+         update_cache: yes
 
     - name: Instalar MariaDB
-
       apt:
-
         name: mariadb-server
-
         state: present
 
+    - name: Asegurar MariaDB (mysql_secure_installation) 
+      mysql_secure_installation: 
+        login_password: "{{ db_root_password }}" 
+        root_password: "{{ db_root_password }}" 
+        state: present 
+        update_password: always 
+        remove_anonymous_users: yes 
+        disallow_root_login_remotely: yes 
+        remove_test_database: yes 
+        create_root_user: yes
+        root_password_changed: yes
