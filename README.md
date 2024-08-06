@@ -41,7 +41,12 @@ El playbook realiza las siguientes tareas:
 16. Habilitar puertos en el firewall
 17. Recargar el firewall
 
+## DB
 
-
-
-
+1. Configurar y asegurar MariaDB en Ubuntu
+2. Configurar el intérprete de Python
+3. Actualizar la lista de paquetes
+5. Instalar MariaDB y herramientas relacionadas
+6. Verificar si mysql_secure_installation está instalado
+7. Mostrar ruta de mysql_secure_installation
+8. Ejecutar mysql_secure_installation
