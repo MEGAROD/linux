@@ -45,6 +45,14 @@
         owner: "{{ tomcat_user }}"
         group: "{{ tomcat_group }}"
 
+    - name: Crear directorio de configuracion
+      file:
+        path: "/opt/config/"
+        state: directory
+        owner: "{{ tomcat_user}}"
+        group: "{{ tomcat_group }}"
+        mode: "0755"
+
     - name: Instalar unzip
       yum:
         name: unzip
@@ -126,6 +134,6 @@
       loop: "{{ tomcat_ports }}"
 
     - name: Recargar el firewall
-      firewalld:
-        state: reloaded
+      command: firewall-cmd --reload
+
 
