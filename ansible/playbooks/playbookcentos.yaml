@@ -1,0 +1,131 @@
+---
+
+- name: Configuración del servidor de aplicaciones
+  hosts: apps
+  become: yes
+
+  vars:
+    java_version: "11"
+    tomcat_version: "9.0.93"
+    tomcat_user: "tomcat"
+    tomcat_group: "tomcat"
+    tomcat_install_dir: "/opt/tomcat"
+    tomcat_service: "tomcat"
+    war_file: "~/obligatorio/ansible/files/todo.war"
+    properties_file_src: "~/obligatorio/ansible/files/app.properties"
+    properties_file_dest: "/opt/config/app.properties"
+    tomcat_ports:
+      - 8080
+      - 8443
+
+  tasks:
+    - name: Instalar JDK de Java
+      yum:
+        name: "java-{{ java_version }}-openjdk"
+        state: present
+
+    - name: Crear usuario Tomcat
+      user:
+        name: "{{ tomcat_user }}"
+        shell: /bin/false
+
+    - name: Crear grupo Tomcat
+      group:
+        name: "{{ tomcat_group }}"
+
+    - name: Descargar Tomcat
+      get_url:
+        url: "https://downloads.apache.org/tomcat/tomcat-9/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+        dest: "/tmp/apache-tomcat-{{ tomcat_version }}.tar.gz"
+
+    - name: Crear directorio de instalación de Tomcat
+      file:
+        path: "{{ tomcat_install_dir }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+
+    - name: Instalar unzip
+      yum:
+        name: unzip
+        state: present
+
+    - name: Instalar tar
+      yum:
+        name: tar
+        state: present
+
+    - name: Extraer Tomcat
+      unarchive:
+        src: "/tmp/apache-tomcat-{{ tomcat_version }}.tar.gz"
+        dest: "{{ tomcat_install_dir }}"
+        remote_src: yes
+
+    - name: Cambiar permisos del directorio de Tomcat
+      file:
+        path: "{{ tomcat_install_dir }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        recurse: yes
+
+    - name: Crear servicio systemD para Tomcat
+      copy:
+        dest: /etc/systemd/system/{{ tomcat_service }}.service
+        content: |
+          [Unit]
+          Description=Apache Tomcat Web Application Container
+          After=network.target
+
+          [Service]
+          Type=forking
+
+          User={{ tomcat_user }}
+          Group={{ tomcat_group }}
+
+          Environment=CATALINA_PID={{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/temp/tomcat.pid
+          Environment=CATALINA_HOME={{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}
+          Environment=CATALINA_BASE={{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}
+          Environment='JAVA_OPTS=-Djava.security.egd=file:///dev/urandom'
+
+          ExecStart={{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/bin/startup.sh
+          ExecStop={{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/bin/shutdown.sh
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Recargar systemD
+      systemd:
+        daemon_reload: yes
+
+    - name: Habilitar e iniciar Tomcat
+      systemd:
+        name: "{{ tomcat_service }}"
+        enabled: yes
+        state: started
+
+    - name: Desplegar el archivo WAR
+      copy:
+        src: "{{ war_file }}"
+        dest: "{{ tomcat_install_dir }}/apache-tomcat-{{ tomcat_version }}/webapps/todo.war"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+
+    - name: Copiar el archivo de configuración de la aplicación
+      copy:
+        src: "{{ properties_file_src }}"
+        dest: "{{ properties_file_dest }}"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+
+    - name: Habilitar puertos en el firewall
+      firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        state: enabled
+      loop: "{{ tomcat_ports }}"
+
+    - name: Recargar el firewall
+      firewalld:
+        state: reloaded
+
