@@ -9,7 +9,7 @@
     db_root_password: "Servidor1"
 
    tasks:
-  
+
      - name: Configurar el intérprete de Python
        set_fact:
        ansible_python_interpreter: /usr/bin/python3.12
@@ -18,13 +18,13 @@
        apt:
          update_cache: yes
 
-    - name: Instalar MariaDB
+     - name: Instalar MariaDB
       apt:
         name: mariadb-server
         state: present
 
-    - name: Asegurar MariaDB (mysql_secure_installation) 
-      mysql_secure_installation: 
+     - name: Asegurar MariaDB (mysql_secure_installation) 
+       mysql_secure_installation: 
         login_password: "{{ db_root_password }}" 
         root_password: "{{ db_root_password }}" 
         state: present 
