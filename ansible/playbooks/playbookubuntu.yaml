@@ -1,4 +1,5 @@
 ---
+
 - name: Configurar y asegurar MariaDB en Ubuntu
   hosts: ubuntu
   become: yes
@@ -8,29 +9,48 @@
     db_name: "ToDo"
     db_root_password: "Servidor1"
 
-   tasks:
+  tasks:
+    - name: Configurar el intérprete de Python
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3.12
 
-     - name: Configurar el intérprete de Python
-       set_fact:
-       ansible_python_interpreter: /usr/bin/python3.12
+    - name: Actualizar la lista de paquetes
+      apt:
+        update_cache: yes
 
-     - name: Actualizar la lista de paquetes
-       apt:
-         update_cache: yes
-
-     - name: Instalar MariaDB
+    - name: Instalar MariaDB
       apt:
         name: mariadb-server
         state: present
 
-     - name: Asegurar MariaDB (mysql_secure_installation) 
-       mysql_secure_installation: 
-        login_password: "{{ db_root_password }}" 
-        root_password: "{{ db_root_password }}" 
-        state: present 
-        update_password: always 
-        remove_anonymous_users: yes 
-        disallow_root_login_remotely: yes 
-        remove_test_database: yes 
-        create_root_user: yes
-        root_password_changed: yes
+    - name: Instalar MariaDB y herramientas relacionadas
+      apt:
+        name:
+          - mariadb-server
+          - mariadb-client
+
+        state: present
+
+    - name: Verificar si mysql_secure_installation está instalado
+      command: which mysql_secure_installation
+      register: mysql_secure_installation_path
+      changed_when: false
+
+    - name: Mostrar ruta de mysql_secure_installation
+      debug:
+        msg: "La ruta de mysql_secure_installation es {{ mysql_secure_installation_path.stdout }}"
+
+    - name: Ejecutar mysql_secure_installation
+      expect:
+        command: mysql_secure_installation
+        responses:
+          'Enter current password for root (enter for none):': "{{ db_root_password }}"
+          'Set root password? [Y/n]': 'n'
+          'New password:': "{{ db_root_password }}"
+          'Re-enter new password:': "{{ db_root_password }}"
+          'Remove anonymous users? [Y/n]': 'Y'
+          'Disallow root login remotely? [Y/n]': 'Y'
+          'Remove test database and access to it? [Y/n]': 'Y'
+          'Reload privilege tables now? [Y/n]': 'Y'
+      when: mysql_secure_installation_path.stdout != ""
+      become: yes
