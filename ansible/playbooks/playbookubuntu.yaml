@@ -40,17 +40,56 @@
       debug:
         msg: "La ruta de mysql_secure_installation es {{ mysql_secure_installation_path.stdout }}"
 
-    - name: Ejecutar mysql_secure_installation
-      expect:
-        command: mysql_secure_installation
-        responses:
-          'Enter current password for root (enter for none):': "{{ db_root_password }}"
-          'Set root password? [Y/n]': 'n'
-          'New password:': "{{ db_root_password }}"
-          'Re-enter new password:': "{{ db_root_password }}"
-          'Remove anonymous users? [Y/n]': 'Y'
-          'Disallow root login remotely? [Y/n]': 'Y'
-          'Remove test database and access to it? [Y/n]': 'Y'
-          'Reload privilege tables now? [Y/n]': 'Y'
-      when: mysql_secure_installation_path.stdout != ""
-      become: yes
+#    - name: Cambiar bind
+#      ansible.builtin.lineinfile:
+#        path: /etc/mysql/my.cnf
+#        regexp: '^#bind-address'
+#        line: '[mysqld]\nbind-address = 0.0.0.0'
+#        state: present
+
+    - name: Cambiar bind
+      ansible.builtin.blockinfile:
+        path: /etc/mysql/my.cnf
+        marker: '# ANSIBLE'
+        state: present
+        block: |
+          [mysqld]
+          bind-address = 0.0.0.0
+
+
+    - name: Instalar pip
+      apt:
+        name: pip
+        state: present
+
+    - name: Instalar pip3
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: Asegurar pymysql
+      become: true
+      apt:
+        name: python3-pymysql
+        state: present
+
+    - name: Copiar SQL
+      ansible.builtin.copy:
+        src: "/home/user/obligatorio/ansible/files/db.sql"
+        dest: "~/db.sql"
+
+    - name: Aplicar SQL
+      mysql_db:
+        state: import
+#        login_user: "root"
+#        login_password: ""
+#        login_host: "127.0.0.1"
+        login_unix_socket: /run/mysqld/mysqld.sock
+        name: "todo"
+        target: "~/db.sql"
+
+    - name: Reiniciar servicio
+      service:
+        name: mariadb
+        state: restarted
+

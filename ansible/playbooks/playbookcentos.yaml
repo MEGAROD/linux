@@ -133,6 +133,11 @@
         state: enabled
       loop: "{{ tomcat_ports }}"
 
+    - name: Reiniciar Tomcat
+      service:
+        name: tomcat
+        state: restarted
+
     - name: Recargar el firewall
       command: firewall-cmd --reload
 
